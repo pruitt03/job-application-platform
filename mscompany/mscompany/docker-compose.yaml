@@ -1,0 +1,141 @@
+services:
+  postgres:
+    container_name:  postgres_container
+    image: postgres
+    environment:
+      POSTGRES_USER: sanjana
+      POSTGRES_PASSWORD: sanjana
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres
+    restart: unless-stopped
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@domain.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - postgres
+    restart: unless-stopped
+  configserver:
+    image: sanjanareddym/configserver
+    container_name: configserver
+    ports:
+      - 8080:8080
+    depends_on:
+      - service-registry
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+  service-registry:
+    image: sanjanareddym/servicereg
+    container_name: servicereg
+    ports:
+      - 8761:8761
+    depends_on:
+      - rabbitmq
+      - zipkin
+      - postgres
+      - pgadmin
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+  mscompany:
+    image: sanjanareddym/mscompany
+    container_name: mscompany
+    ports:
+      - 8081:8081
+    depends_on:
+      - service-registry
+      - configserver
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+  msjob:
+    image: sanjanareddym/msjob
+    container_name: msjob
+    ports:
+      - 8082:8082
+    depends_on:
+      - service-registry
+      - configserver
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka
+  msreview:
+    image: sanjanareddym/msreview
+    container_name: msreview
+    ports:
+      - 8083:8083
+    depends_on:
+      - service-registry
+      - configserver
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka
+
+
+
+
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - 9411:9411
+    networks:
+      - microservice-network
+      - postgres
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - microservice-network
+      - postgres
+  gateway:
+    image: sanjanareddym/gateway
+    container_name: gateway
+    ports:
+      - 8084:8084
+    depends_on:
+      - service-registry
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+
+networks:
+  postgres:
+    driver: bridge
+  microservice-network:
+    driver: bridge
+volumes:
+  postgres:
+  pgadmin:

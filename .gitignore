@@ -1,0 +1,17 @@
+# Java
+target/
+*.class
+*.jar
+
+# Logs
+*.log
+
+# IDEs
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+
+# Environment
+.env 
